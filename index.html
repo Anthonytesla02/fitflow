@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FitFlow Workout - Gamified</title>
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+<!-- FontAwesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<!-- Animate.css for animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<!-- Custom CSS -->
+<style>
+/* Loader styles */
+#loader {
+position: fixed;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+background-color: #fff;
+display: flex;
+justify-content: center;
+align-items: center;
+z-index: 9999;
+}
+.spinner-border {
+width: 3rem;
+height: 3rem;
+}
+/* Global body styles */
+body {
+background: linear-gradient(135deg, #74ABE2, #5563DE);
+color: #fff;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+margin-bottom: 70px;
+/* space for bottom nav */
+}
+.container {
+padding-top: 20px;
+padding-bottom: 40px;
+}
+/* Card styling for a modern, translucent look */
+.card {
+background: rgba(255, 255, 255, 0.1);
+border: none;
+border-radius: 15px;
+box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+.card-header, .card-footer {
+background: transparent;
+
+.offline-data-notice {
+  background: rgba(255, 152, 0, 0.2);
+  border-left: 5px solid #FF9800;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 5px;
+}
+.offline-data-action {
+  display: inline-block;
+  background: #FF9800;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+border: none;
+}
+.btn-custom {
+background-color: #ff9800;
+border: none;
+color: #fff;
+}
+.btn-custom:hover {
+background-color: #e68900;
+}
+/* Progress bar styling */
+.progress {
+height: 20px;
+background: rgba(255, 255, 255, 0.2);
+border-radius: 10px;
+}
+.progress-bar {
+background-color: #ff9800;
+font-weight: bold;
+}
+/* Header styling */
+.app-header {
+background-color: rgba(0,0,0,0.2);
+padding: 15px;
+text-align: center;
+font-size: 1.5rem;
+font-weight: bold;
+}
+/* Bottom navigation bar styling */
+.bottom-nav {
+position: fixed;
+bottom: 0;
+left: 0;
+width: 100%;
+background: rgba(0, 0, 0, 0.7);
+display: flex;
+justify-content: space-around;
+padding: 10px 0;
+z-index: 10000;
+}
+.bottom-nav a {
+color: #fff;
+font-size: 1.2rem;
+text-decoration: none;
+text-align: center;
+}
+.bottom-nav a:hover {
+color: #ff9800;
+}
+</style>
+</head>
+<body>
+<!-- App Header -->
+<header class="app-header">
+<i class="fas fa-dumbbell"></i> FitFlow Workout
+</header>
+<!-- Page Loader -->
+<div id="loader">
+<div class="spinner-border text-primary" role="status">
+<span class="visually-hidden">Loading...</span>
+</div>
+</div>
+<!-- Main App Container -->
+<div class="container" id="app" style="display: none;">
+<!-- Day Selection Screen -->
+<div id="day-selection" class="animate__animated animate__fadeIn">
+<h2 class="text-center mb-4">Select Workout Day</h2>
+<div id="offlineDataAlert" style="display:none" class="offline-data-notice">
+  You have <span id="offlineCount">0</span> workout records saved on this device that haven't synced to Google Sheets.
+  <span class="offline-data-action" onclick="retryOfflineData()">Retry Sync</span>
+</div>
+<div class="row" id="dayList">
+<!-- Dynamic Day Cards go here -->
+</div>
+</div>
+<!-- Workout Session Screen -->
+<div id="workout-session" style="display: none;" class="animate__animated">
+<div class="card mx-auto" style="max-width: 500px;">
+<div class="card-header text-center">
+<h3 id="sessionTitle"></h3>
+</div>
+<div class="card-body">
+<!-- Timer Display -->
+<div id="timerDisplay" class="text-center mb-3" style="font-size:1.2rem;"></div>
+<div id="exerciseInfo">
+<!-- Exercise details will be inserted here -->
+</div>
+<div id="setInfo" class="mt-3">
+<!-- Progress bar -->
+</div>
+</div>
+<div class="card-footer text-center">
+<button id="prevBtn" class="btn btn-outline-light me-2">
+<i class="fas fa-chevron-left"></i> Prev
+</button>
+<button id="nextBtn" class="btn btn-custom">
+Next
+<i class="fas fa-chevron-right"></i>
+</button>
+</div>
+</div>
+</div>
+<!-- Workout Stats Screen -->
+<div id="workout-stats" style="display: none;" class="animate__animated animate__fadeIn">
+<div class="card mx-auto" style="max-width: 500px;">
+<div class="card-header text-center">
+<h3>Workout Summary</h3>
+</div>
+<div class="card-body">
+<ul class="list-group">
+<li class="list-group-item bg-transparent text-white">Total Workout Time: <span id="totalWorkoutTime"></span></li>
+<li class="list-group-item bg-transparent text-white">Total Exercise Time: <span id="totalExerciseTime"></span></li>
+<li class="list-group-item bg-transparent text-white">Total Rest Time: <span id="totalRestTime"></span></li>
+<li class="list-group-item bg-transparent text-white">Number of Exercises: <span id="numberOfExercises"></span></li>
+<li class="list-group-item bg-transparent text-white">Estimated Calories Burned: <span id="caloriesBurned"></span></li>
+<li class="list-group-item bg-transparent text-white">Points Earned: <span id="pointsEarned"></span></li>
+<li class="list-group-item bg-transparent text-white">Achievement: <span id="achievement"></span></li>
+</ul>
+</div>
+<div class="card-footer text-center">
+<button id="restartBtn" class="btn btn-custom">
+<i class="fas fa-home"></i> Back to Home
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="bottom-nav">
+<a href="#" onclick="showSection('day-selection')"><i class="fas fa-home"></i><br>Home</a>
+<a href="#" onclick="showSection('workout-session')"><i class="fas fa-dumbbell"></i><br>Workout</a>
+<a href="#" onclick="showSection('workout-stats')"><i class="fas fa-chart-line"></i><br>Stats</a>
+</nav>
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Custom JavaScript -->
+<script>
+// Google Sheets API endpoint (update with your deployed URL)
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyz89DkmQG7xLFwL7JWVC-Zi3PTC_xv7a7IiwyB6ck6PAQx0pKsdrm7V1T-g2bbtSo/exec";  // Keep existing URL
+/* Workout Plan Data */
+const workoutPlan = {
+"Day 1": {
+title: "Chest, Biceps, Front & Side Delts",
+sections: [
+{ name: "Chest Exercises", sets: 3, exercises: ["Bench Press", "Incline Dumbbell Press", "Chest Fly"] },
+{ name: "Biceps Exercises", sets: 2, exercises: ["Barbell Curl", "Hammer Curl"] },
+{ name: "Shoulder Exercises", sets: 1, exercises: ["Front Raise", "Side Lateral Raise"] }
+],
+estimatedDuration: "35–40 minutes"
+},
+"Day 2": {
+title: "Back, Rear Delts, Traps, Triceps",
+sections: [
+{ name: "Back Exercises", sets: 3, exercises: ["Pull-ups", "Bent Over Row", "Lat Pulldown"] },
+{ name: "Rear Delt Exercise", sets: 3, exercises: ["Reverse Fly"] },
+{ name: "Traps Exercise", sets: 1, exercises: ["Shrugs"] },
+{ name: "Triceps Exercises", sets: 2, exercises: ["Tricep Dip", "Overhead Tricep Extension"] }
+],
+estimatedDuration: "35–40 minutes"
+},
+"Day 3": {
+title: "Legs & Abs",
+sections: [
+{ name: "Leg Exercises", sets: null, exercises: [ { name: "Squats", sets: 2 }, { name: "Lunges", sets: 2 }, { name: "Leg Press", sets: 2 }, { name: "Calf Raises", sets: 1 } ] },
+{ name: "Abs Exercises", sets: 2, exercises: ["Crunches", "Plank"] }
+],
+estimatedDuration: "25–30 minutes"
+},
+"Day 4": {
+title: "Shoulders, Biceps, Triceps, Forearms",
+sections: [
+{ name: "Shoulder Exercises", sets: 3, exercises: ["Military Press", "Lateral Raise", "Arnold Press"] },
+{ name: "Biceps Exercises", sets: 2, exercises: ["Dumbbell Curl", "Concentration Curl"] },
+{ name: "Triceps Exercises", sets: 2, exercises: ["Skull Crushers", "Triceps Kickback"] },
+{ name: "Forearm Exercises", sets: 1, exercises: ["Wrist Curls", "Reverse Wrist Curls"] }
+],
+estimatedDuration: "40–45 minutes"
+},
+"Day 5": {
+title: "Chest & Back - Superset Focus",
+sections: [
+{ name: "Chest-Back Supersets", sets: 3, exercises: [ { superset: true, exercises: ["Bench Press", "Pull-ups"] }, { superset: true, exercises: ["Incline Dumbbell Press", "Bent Over Row"] } ] },
+{ name: "Additional Chest Exercises", sets: 2, exercises: ["Chest Fly", "Push-up"] },
+{ name: "Additional Back Exercise", sets: 2, exercises: ["Lat Pulldown"] }
+],
+estimatedDuration: "30–35 minutes"
+},
+"Day 6": {
+title: "Legs & Abs - Variation",
+sections: [
+{ name: "Leg Exercises", sets: null, exercises: [ { name: "Deadlift", sets: 2 }, { name: "Bulgarian Split Squat", sets: 2 }, { name: "Leg Curl", sets: 2 }, { name: "Calf Raises", sets: 1 } ] },
+{ name: "Abs Exercises", sets: 2, exercises: ["Bicycle Crunches", "Leg Raises"] }
+],
+estimatedDuration: "25–30 minutes"
+}
+};
+// Timer and workout state variables
+let phase = 'exercise'; // 'exercise' or 'rest'
+let timerSeconds = 0;
+let timerInterval = null;
+// Updated rest periods to 5 seconds
+const REST_BETWEEN_SETS = 5; // seconds
+const REST_BETWEEN_EXERCISES = 5; // seconds
+let restType = null; // 'set' or 'exercise'
+let workoutStartTime = null;
+let totalExerciseTime = 0;
+let totalRestTime = 0;
+let exerciseStats = []; // record exercise durations per set
+let points = 0; // Gamification points
+// Workout navigation variables
+let currentDay = null;
+let currentExerciseIndex = 0;
+let currentSet = 1;
+let workoutSequence = [];
+/* Initialize the day selection UI */
+function initDaySelection() {
+const dayList = document.getElementById('dayList');
+dayList.innerHTML = '';
+Object.keys(workoutPlan).forEach(day => {
+const col = document.createElement('div');
+col.className = "col-12 col-md-6 mb-3";
+col.innerHTML = `
+<div class="card h-100 shadow animate__animated animate__fadeInUp" style="cursor: pointer;" onclick="startWorkout('${day}')">
+<div class="card-body text-center">
+<h4>${day}</h4>
+<p>${workoutPlan[day].title}</p>
+<p><small>Est. Duration: ${workoutPlan[day].estimatedDuration}</small></p>
+</div>
+</div>
+`;
+dayList.appendChild(col);
+});
+}
+/* Build a linear workout sequence for the selected day */
+function buildWorkoutSequence(day) {
+const dayPlan = workoutPlan[day];
+workoutSequence = [];
+dayPlan.sections.forEach(section => {
+if (section.exercises.length > 0) {
+if (typeof section.exercises[0] === 'object' && !section.exercises[0].superset) {
+section.exercises.forEach(ex => {
+workoutSequence.push({ section: section.name, exercise: ex.name, totalSets: ex.sets, });
+});
+} else if (typeof section.exercises[0] === 'object' && section.exercises[0].superset) {
+section.exercises.forEach(sup => {
+workoutSequence.push({ section: section.name, exercise: sup.exercises.join(' + '), totalSets: section.sets, });
+});
+} else {
+section.exercises.forEach(exercise => {
+workoutSequence.push({ section: section.name, exercise: exercise, totalSets: section.sets });
+});
+}
+}
+});
+}
+/* Update timer display based on phase */
+function updateTimerDisplay() {
+const timerDisplay = document.getElementById('timerDisplay');
+if (phase === 'exercise') {
+timerDisplay.innerText = `Exercise Time: ${timerSeconds} sec`;
+} else if (phase === 'rest') {
+timerDisplay.innerText = `Rest: ${timerSeconds} sec remaining`;
+}
+}
+/* Start the exercise timer (counts up) */
+function startExerciseTimer() {
+phase = 'exercise';
+timerSeconds = 0;
+clearInterval(timerInterval);
+timerInterval = setInterval(() => {
+timerSeconds++;
+updateTimerDisplay();
+}, 1000);
+document.getElementById('nextBtn').innerHTML = `Finish Set <i class="fas fa-check"></i>`;
+}
+/* Start the rest timer (counts down) */
+function startRestTimer(duration) {
+phase = 'rest';
+timerSeconds = duration;
+clearInterval(timerInterval);
+
+// Update the set counter immediately if this is a rest between sets
+if (restType === 'set') {
+  const currentWorkout = workoutSequence[currentExerciseIndex];
+  document.getElementById('exerciseInfo').innerHTML = `
+    <h4>${currentWorkout.section}</h4>
+    <h2>${currentWorkout.exercise}</h2>
+    <p>Set ${currentSet + 1} of ${currentWorkout.totalSets}</p>
+  `;
+}
+
+timerInterval = setInterval(() => {
+timerSeconds--;
+updateTimerDisplay();
+if (timerSeconds <= 0) {
+clearInterval(timerInterval);
+totalRestTime += duration;
+resumeNextPhaseAfterRest();
+}
+}, 1000);
+document.getElementById('nextBtn').innerHTML = `Resting...`;
+}
+/* Resume exercise after rest period */
+function resumeNextPhaseAfterRest() {
+if (restType === 'set') {
+currentSet++;
+} else if (restType === 'exercise') {
+currentExerciseIndex++;
+currentSet = 1;
+displayCurrentExercise();
+}
+startExerciseTimer();
+}
+/* Display the current exercise and progress */
+function displayCurrentExercise() {
+const exerciseInfo = document.getElementById('exerciseInfo');
+const setInfo = document.getElementById('setInfo');
+const currentWorkout = workoutSequence[currentExerciseIndex];
+exerciseInfo.innerHTML = `
+<h4>${currentWorkout.section}</h4>
+<h2>${currentWorkout.exercise}</h2>
+<p>Set ${currentSet} of ${currentWorkout.totalSets}</p>
+`;
+const overallProgress = Math.round( ((currentExerciseIndex + (currentSet - 1) / currentWorkout.totalSets) / workoutSequence.length) * 100 );
+setInfo.innerHTML = `
+<div class="progress">
+<div class="progress-bar" role="progressbar" style="width: ${overallProgress}%;" aria-valuenow="${overallProgress}" aria-valuemin="0" aria-valuemax="100">
+${overallProgress}%
+</div>
+</div>
+`;
+}
+/* Handler for Next button */
+function nextExercise() {
+if (phase === 'exercise') {
+// Record exercise duration for the current set
+const exerciseDuration = timerSeconds;
+totalExerciseTime += exerciseDuration;
+if (!exerciseStats[currentExerciseIndex]) {
+exerciseStats[currentExerciseIndex] = { exercise: workoutSequence[currentExerciseIndex].exercise, sets: [] };
+}
+exerciseStats[currentExerciseIndex].sets.push(exerciseDuration);
+const currentWorkout = workoutSequence[currentExerciseIndex];
+if (currentSet < currentWorkout.totalSets) {
+restType = 'set';
+startRestTimer(REST_BETWEEN_SETS);
+return;
+} else {
+if (currentExerciseIndex < workoutSequence.length - 1) {
+restType = 'exercise';
+startRestTimer(REST_BETWEEN_EXERCISES);
+return;
+} else {
+finishWorkout();
+return;
+}
+}
+}
+}
+/* Handler for Prev button */
+function prevExercise() {
+if (phase === 'exercise') {
+clearInterval(timerInterval);
+if (currentSet > 1) {
+currentSet--;
+} else if (currentExerciseIndex > 0) {
+currentExerciseIndex--;
+currentSet = workoutSequence[currentExerciseIndex].totalSets;
+}
+startExerciseTimer();
+displayCurrentExercise();
+}
+}
+/* Finish the workout, award points, and display stats */
+function finishWorkout() {
+clearInterval(timerInterval);
+const workoutEndTime = new Date();
+const workoutDurationSec = Math.round((workoutEndTime - workoutStartTime) / 1000);
+// Simple calories formula: 10 calories per minute of exercise time
+const calories = Math.round((totalExerciseTime / 60) * 10);
+// Award points (e.g., 100 points for completing a workout)
+points += 100;
+// For achievements, we'll use a simple achievement for completing a workout
+const achievement = "Daily Workout Completed!";
+// Update stats display
+document.getElementById('totalWorkoutTime').innerText = formatTime(workoutDurationSec);
+document.getElementById('totalExerciseTime').innerText = formatTime(totalExerciseTime);
+document.getElementById('totalRestTime').innerText = formatTime(totalRestTime);
+document.getElementById('numberOfExercises').innerText = workoutSequence.length;
+document.getElementById('caloriesBurned').innerText = calories + " cal";
+document.getElementById('pointsEarned').innerText = points;
+document.getElementById('achievement').innerText = achievement;
+// Send data to Google Sheets
+postWorkoutData({
+day: currentDay,
+totalWorkoutTime: formatTime(workoutDurationSec),
+exerciseTime: formatTime(totalExerciseTime),
+restTime: formatTime(totalRestTime),
+exerciseCount: workoutSequence.length,
+calories: calories,
+points: points,
+achievements: achievement
+});
+// Hide workout session and show stats
+document.getElementById('workout-session').style.display = 'none';
+document.getElementById('workout-stats').style.display = 'block';
+}
+/* Format seconds into mm:ss */
+function formatTime(sec) {
+const minutes = Math.floor(sec / 60);
+const seconds = sec % 60;
+return `${minutes}m ${seconds}s`;
+}
+/* Post workout data to Google Sheets via Apps Script Web App */
+function postWorkoutData(data) {
+  console.log("Posting workout data:", data);
+  
+  // Create a notification to user
+  const notification = document.createElement('div');
+  notification.className = 'position-fixed top-0 start-50 translate-middle-x mt-4 p-3 bg-primary text-white rounded';
+  notification.style.zIndex = '9999';
+  notification.innerHTML = 'Saving workout data...';
+  document.body.appendChild(notification);
+  
+  // Store data locally in case submission fails
+  const workoutHistory = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  const workoutWithTimestamp = {
+    ...data,
+    timestamp: new Date().toISOString()
+  };
+  workoutHistory.push(workoutWithTimestamp);
+  localStorage.setItem('workoutHistory', JSON.stringify(workoutHistory));
+
+  // Try multiple methods to ensure data is sent
+  // Method 1: Standard fetch with no-cors
+  fetch(SHEET_API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { 
+      "Content-Type": "application/json" 
+    },
+    body: JSON.stringify(data)
+  })
+  .then(() => {
+    console.log("Method 1: Data posted to Google Sheets");
+    showSuccessNotification(notification);
+  })
+  .catch(error => {
+    console.error("Method 1 error:", error);
+    
+    // Method 2: Try using XMLHttpRequest as backup
+    tryXHRMethod(data, notification);
+  });
+}
+
+function tryXHRMethod(data, notification) {
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", SHEET_API_URL, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  
+  xhr.onload = function() {
+    console.log("Method 2: Data posted to Google Sheets");
+    showSuccessNotification(notification);
+  };
+  
+  xhr.onerror = function() {
+    console.error("Method 2 error: XHR failed");
+    tryImageBeaconMethod(data, notification);
+  };
+  
+  xhr.send(JSON.stringify(data));
+}
+
+function tryImageBeaconMethod(data, notification) {
+  // Method 3: Use an image beacon with data in URL (limited data, but very reliable)
+  // Encode the minimal important data
+  const minimalData = {
+    d: data.day,
+    t: data.totalWorkoutTime,
+    c: data.calories,
+    p: data.points
+  };
+  
+  const dataParam = encodeURIComponent(JSON.stringify(minimalData));
+  const beaconUrl = `${SHEET_API_URL}?data=${dataParam}&t=${new Date().getTime()}`;
+  
+  const img = new Image();
+  img.onload = function() {
+    console.log("Method 3: Data posted via image beacon");
+    showSuccessNotification(notification);
+  };
+  
+  img.onerror = function() {
+    console.error("All methods failed");
+    notification.innerHTML = 'Failed to save workout data. Data saved locally.';
+    notification.className = 'position-fixed top-0 start-50 translate-middle-x mt-4 p-3 bg-warning text-white rounded';
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  };
+  
+  img.src = beaconUrl;
+}
+
+function showSuccessNotification(notification) {
+  notification.innerHTML = 'Workout saved successfully!';
+  notification.className = 'position-fixed top-0 start-50 translate-middle-x mt-4 p-3 bg-success text-white rounded';
+  
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+/* Start workout for a selected day */
+function startWorkout(day) {
+currentDay = day;
+currentExerciseIndex = 0;
+currentSet = 1;
+totalExerciseTime = 0;
+totalRestTime = 0;
+exerciseStats = [];
+workoutStartTime = new Date();
+buildWorkoutSequence(day);
+document.getElementById('day-selection').style.display = 'none';
+document.getElementById('workout-stats').style.display = 'none';
+document.getElementById('workout-session').style.display = 'block';
+document.getElementById('sessionTitle').innerText = day + " - " + workoutPlan[day].title;
+displayCurrentExercise();
+startExerciseTimer();
+}
+/* Show specific section (for bottom nav navigation) */
+function showSection(sectionId) {
+// Check if we're in the middle of a workout
+const inWorkout = document.getElementById('workout-session').style.display === 'block';
+
+document.getElementById('day-selection').style.display = 'none';
+document.getElementById('workout-session').style.display = 'none';
+document.getElementById('workout-stats').style.display = 'none';
+
+// Only show the section if it exists
+const targetSection = document.getElementById(sectionId);
+if (targetSection) {
+targetSection.style.display = 'block';
+}
+
+// If trying to navigate to workout section but no workout is started
+if (sectionId === 'workout-session' && !inWorkout) {
+// Go back to day selection instead
+document.getElementById('day-selection').style.display = 'block';
+}
+}
+/* Restart the workout app (back to day selection) */
+document.getElementById('restartBtn').addEventListener('click', () => {
+clearInterval(timerInterval);
+document.getElementById('workout-stats').style.display = 'none';
+document.getElementById('day-selection').style.display = 'block';
+});
+// Event listeners for navigation buttons
+document.getElementById('nextBtn').addEventListener('click', nextExercise);
+document.getElementById('prevBtn').addEventListener('click', prevExercise);
+// Initialize app once DOM is ready and hide loader
+document.addEventListener("DOMContentLoaded", function() {
+try {
+initDaySelection();
+// Reduce timeout and make sure loader is hidden
+setTimeout(() => {
+const loader = document.getElementById('loader');
+const app = document.getElementById('app');
+if (loader) loader.style.display = 'none';
+if (app) app.style.display = 'block';
+console.log("App initialized successfully");
+}, 500);
+} catch (error) {
+console.error("Error initializing app:", error);
+// Ensure loader is hidden even if there's an error
+document.getElementById('loader').style.display = 'none';
+document.getElementById('app').style.display = 'block';
+}
+});
+</script>
+</body>
+</html>
